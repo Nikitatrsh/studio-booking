@@ -15,7 +15,7 @@ class MembershipController extends Controller
     {
         $this->authorize('viewAny', Membership::class);
 
-        $query = Membership::query();
+        $query = Membership::with('user:id,name,email');
 
         if (! $request->user()->isAdmin()) {
             $query->where('user_id', $request->user()->id);
@@ -28,14 +28,17 @@ class MembershipController extends Controller
     {
         $this->authorize('create', Membership::class);
 
-        return response()->json(Membership::create($request->validated()), 201);
+        $membership = Membership::create($request->validated());
+        $membership->refresh();
+
+        return response()->json($membership->load('user:id,name,email'), 201);
     }
 
     public function show(Membership $membership): JsonResponse
     {
         $this->authorize('view', $membership);
 
-        return response()->json($membership);
+        return response()->json($membership->load('user:id,name,email'));
     }
 
     public function update(UpdateMembershipRequest $request, Membership $membership): JsonResponse
@@ -44,7 +47,7 @@ class MembershipController extends Controller
 
         $membership->update($request->validated());
 
-        return response()->json($membership);
+        return response()->json($membership->load('user:id,name,email'));
     }
 
     public function destroy(Membership $membership): JsonResponse

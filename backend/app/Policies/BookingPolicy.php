@@ -19,7 +19,11 @@ class BookingPolicy
 
     public function view(User $user, Booking $booking): bool
     {
-        return $user->id === $booking->user_id;
+        if ($user->id === $booking->user_id) {
+            return true;
+        }
+
+        return $user->isInstructor() && $user->id === $booking->studioClass->instructor_id;
     }
 
     public function create(User $user): bool

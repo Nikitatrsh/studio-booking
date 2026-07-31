@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreStudioClassRequest;
 use App\Http\Requests\UpdateStudioClassRequest;
 use App\Models\StudioClass;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 class StudioClassController extends Controller
@@ -13,7 +15,7 @@ class StudioClassController extends Controller
     public function index(): JsonResponse
     {
         return response()->json(
-            StudioClass::with('instructor:id,name')->get()
+            StudioClass::with('instructor:id,name')->withCount($this->bookingCounts())->get()
         );
     }
 
@@ -29,6 +31,7 @@ class StudioClassController extends Controller
             : $request->user()->id;
 
         $studioClass = StudioClass::create($data);
+        $studioClass->refresh();
 
         return response()->json($studioClass->load('instructor:id,name'), 201);
     }
@@ -36,6 +39,8 @@ class StudioClassController extends Controller
     public function show(StudioClass $studioClass): JsonResponse
     {
         $this->authorize('view', $studioClass);
+
+        $studioClass->loadCount($this->bookingCounts());
 
         return response()->json($studioClass->load('instructor:id,name'));
     }
@@ -56,5 +61,16 @@ class StudioClassController extends Controller
         $studioClass->delete();
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * @return array<string, \Closure>
+     */
+    private function bookingCounts(): array
+    {
+        return [
+            'bookings as booked_count' => fn (Builder $query) => $query->where('status', BookingStatus::Booked),
+            'bookings as waitlisted_count' => fn (Builder $query) => $query->where('status', BookingStatus::Waitlisted),
+        ];
     }
 }

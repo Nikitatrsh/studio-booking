@@ -18,10 +18,17 @@ class BookingController extends Controller
     {
         $this->authorize('viewAny', Booking::class);
 
-        $query = Booking::with('studioClass');
+        $user = $request->user();
+        $query = Booking::with(['studioClass', 'user:id,name,email']);
 
-        if (! $request->user()->isAdmin()) {
-            $query->where('user_id', $request->user()->id);
+        if (! $user->isAdmin()) {
+            $query->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+
+                if ($user->isInstructor()) {
+                    $query->orWhereHas('studioClass', fn ($q) => $q->where('instructor_id', $user->id));
+                }
+            });
         }
 
         return response()->json($query->get());
@@ -42,7 +49,7 @@ class BookingController extends Controller
     {
         $this->authorize('view', $booking);
 
-        return response()->json($booking->load('studioClass'));
+        return response()->json($booking->load(['studioClass', 'user:id,name,email']));
     }
 
     public function destroy(Booking $booking): JsonResponse
