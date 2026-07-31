@@ -79,4 +79,28 @@ class AuthorizationTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_instructor_can_see_bookings_for_their_own_class(): void
+    {
+        $instructor = User::factory()->instructor()->create();
+        $studioClass = StudioClass::factory()->create(['instructor_id' => $instructor->id]);
+        $booking = Booking::factory()->create(['studio_class_id' => $studioClass->id]);
+
+        $response = $this->actingAs($instructor)->getJson('/api/bookings');
+
+        $response->assertOk();
+        $response->assertJsonFragment(['id' => $booking->id]);
+    }
+
+    public function test_instructor_cannot_see_bookings_for_someone_elses_class(): void
+    {
+        $instructor = User::factory()->instructor()->create();
+        $otherClass = StudioClass::factory()->create();
+        $booking = Booking::factory()->create(['studio_class_id' => $otherClass->id]);
+
+        $response = $this->actingAs($instructor)->getJson('/api/bookings');
+
+        $response->assertOk();
+        $response->assertJsonMissing(['id' => $booking->id]);
+    }
 }
